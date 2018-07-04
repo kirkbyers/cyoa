@@ -42,14 +42,20 @@ var defaultHandlerTmpl = `
 </html>
 `
 
-func NewHandler(s Story) http.Handler {
-	return handler{s}
+// NewHandler : Create http.Handler from Story map
+func NewHandler(s Story, t *template.Template) http.Handler {
+	if t == nil {
+		t = tpl
+	}
+	return handler{s, t}
 }
 
 type handler struct {
 	s Story
+	t *template.Template
 }
 
+// ServeHTTP : main http handler
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Make sure no leading or trailing space
 	path := strings.TrimSpace(r.URL.Path)
@@ -72,8 +78,8 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Chapter not found.", http.StatusNotFound)
 }
 
+// JSONStory : io.Reader (file) to Story map
 func JSONStory(r io.Reader) (Story, error) {
-	/* */
 	d := json.NewDecoder(r)
 	var story Story
 	if err := d.Decode(&story); err != nil {
@@ -82,14 +88,26 @@ func JSONStory(r io.Reader) (Story, error) {
 	return story, nil
 }
 
+// Story : map of ids -> Chapter
 type Story map[string]Chapter
 
+/*
+Chapter : User chapter
+Title - string: Title of chapter
+Paragraphs - []string: Content of chapter
+Options - []Option: options for next chapters of arc. Can be empty [].
+*/
 type Chapter struct {
 	Title      string   `json:"title"`
 	Paragraphs []string `json:"story"`
 	Options    []Option `json:"options"`
 }
 
+/*
+Option : User options for next chapters in story arc
+Text - string: describing option
+Chapter - string: ids to link to next chapter
+*/
 type Option struct {
 	Text    string `json:"text"`
 	Chapter string `json:"arc"`
