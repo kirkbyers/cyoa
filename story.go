@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
-	"os"
+	"strings"
 )
 
 func init() {
@@ -50,10 +51,25 @@ type handler struct {
 }
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	err := tpl.Execute(w, h.s["intro"])
-	if err != nil {
-		os.Exit(1)
+	// Make sure no leading or trailing space
+	path := strings.TrimSpace(r.URL.Path)
+	// Handle root path case
+	if path == "" || path == "/" {
+		path = "/intro"
 	}
+	// "/intro" -> "intro"
+	path = path[1:]
+
+	// if key exists in map
+	if chapter, ok := h.s[path]; ok {
+		err := tpl.Execute(w, chapter)
+		if err != nil {
+			log.Printf("%v", err)
+			http.Error(w, "Something went wrong...", http.StatusInternalServerError)
+		}
+		return
+	}
+	http.Error(w, "Chapter not found.", http.StatusNotFound)
 }
 
 func JSONStory(r io.Reader) (Story, error) {
